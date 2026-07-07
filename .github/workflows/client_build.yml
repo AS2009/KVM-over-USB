@@ -1,18 +1,24 @@
 name: client_build
 "on":
-  # Sequence of patterns matched against refs/tags
   push:
     tags:
-      # Push events to matching v*, i.e. v1.0, v20.15.10
       - v*
-  # Allows you to run this workflow manually from the Actions tab 
   workflow_dispatch:
+
 jobs:
   build:
     strategy:
       matrix:
-        # os: [macos-latest, ubuntu-latest, windows-latest]
-        os: [ubuntu-latest, windows-latest]
+        include:
+          - os: ubuntu-latest
+            python: '3.14'
+            label: linux
+          - os: windows-latest
+            python: '3.14'
+            label: windows
+          - os: windows-2019
+            python: '3.12'
+            label: windows_win7
 
     runs-on: ${{ matrix.os }}
 
@@ -23,7 +29,7 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.14'
+          python-version: '${{ matrix.python }}'
           architecture: 'x64'
           cache: 'pip'
           cache-dependency-path: |
@@ -32,17 +38,22 @@ jobs:
 
       - name: Install Dependencies
         run: |
-          if [ "$RUNNER_OS" == "Linux" ]; then
+          if [ "$RUNNER_OS" = "Linux" ]; then
               pip install -r ./client/data/requirements_for_posix.txt
-          elif [ "$RUNNER_OS" == "Windows" ]; then
+          elif [ "$RUNNER_OS" = "Windows" ] && [ "${{ matrix.label }}" = "windows_win7" ]; then
+              pip install \
+                pyside6 pyside6-essentials pyside6-addons \
+                pyserial hidapi pych9329 loguru pyyaml nuitka \
+                pywin32 pywinhook
+          elif [ "$RUNNER_OS" = "Windows" ]; then
               pip install -r ./client/data/requirements.txt
           else
               echo "$RUNNER_OS not supported"
               exit 1
           fi
         shell: bash
-        
-      - name: Build with nuitka on windows
+
+      - name: Build with Nuitka (Windows)
         if: runner.os == 'Windows'
         uses: Nuitka/Nuitka-Action@main
         with:
@@ -69,7 +80,7 @@ jobs:
           onefile-windows-splash-screen-image: ./icons/splash.png
           quiet: true
 
-      - name: Build with nuitka on linux
+      - name: Build with Nuitka (Linux)
         if: runner.os == 'Linux'
         uses: Nuitka/Nuitka-Action@main
         with:
@@ -87,11 +98,11 @@ jobs:
           enable-plugins: pyside6
           include-qt-plugins: multimedia
           quiet: true
-          
+
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ runner.os }}_build
+          name: ${{ matrix.label }}_build
           path: |
             ./client/build/*.exe
             ./client/build/*.bin
@@ -105,14 +116,15 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: ./download-artifact
-        
+
       - name: Display structure of downloaded files
         run: ls -R ./download-artifact
 
       - name: Compress to zip file
         run: |
-          zip ./download-artifact/usb_kvm_client_for_linux.zip ./download-artifact/Linux_build/*.bin -v -1 -j
-          zip ./download-artifact/usb_kvm_client_for_windows.zip ./download-artifact/Windows_build/*.exe -v -1 -j
+          zip ./download-artifact/usb_kvm_client_for_linux.zip ./download-artifact/linux_build/*.bin -v -1 -j
+          zip ./download-artifact/usb_kvm_client_for_windows.zip ./download-artifact/windows_build/*.exe -v -1 -j
+          zip ./download-artifact/usb_kvm_client_for_windows_win7.zip ./download-artifact/windows_win7_build/*.exe -v -1 -j || true
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
