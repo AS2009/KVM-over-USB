@@ -37,7 +37,6 @@ jobs:
             --macos-app-name="USB KVM Client" \
             --macos-app-version=1.0.0 \
             --macos-sign-identity=- \
-            --macos-sign-notarization=off \
             --python-flag=-u \
             --python-flag=-O \
             --enable-plugin=pyside6 \
