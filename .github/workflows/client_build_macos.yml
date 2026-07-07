@@ -8,7 +8,17 @@ on:
 
 jobs:
   build:
-    runs-on: macos-latest
+    strategy:
+      matrix:
+        include:
+          - runner: macos-14
+            arch: arm64
+            arch_label: arm64
+          - runner: macos-13
+            arch: x64
+            arch_label: x64
+
+    runs-on: ${{ matrix.runner }}
 
     steps:
       - name: Check-out repository
@@ -18,7 +28,7 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.14'
-          architecture: 'x64'
+          architecture: '${{ matrix.arch }}'
           cache: 'pip'
           cache-dependency-path: |
             **/requirements*.txt
@@ -56,6 +66,7 @@ jobs:
           fi
           python3 ./client/script/create_macos_app_bundle.py "$BUILD_DIR" "./client/build"
         shell: bash
+
       - name: Package as DMG
         run: |
           BUNDLE_NAME="USB KVM Client.app"
@@ -68,12 +79,12 @@ jobs:
           fi
 
           VERSION="${{ github.ref_name }}"
-          DMG_NAME="USB_KVM_Client_${VERSION}_macOS.dmg"
+          DMG_NAME="USB_KVM_Client_${VERSION}_macOS_${{ matrix.arch_label }}.dmg"
           STAGING_DIR="./dmg_staging"
 
           mkdir -p dist "$STAGING_DIR"
           cp -R "$APP_PATH" "$STAGING_DIR/"
-          ln -s /Applications "$STAGING_DIR/Applications"
+          ln -sf /Applications "$STAGING_DIR/Applications"
 
           echo "Creating DMG: ${DMG_NAME}"
           hdiutil create \
@@ -90,7 +101,7 @@ jobs:
       - name: Upload DMG Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: macOS_build
+          name: macOS_build_${{ matrix.arch_label }}
           path: dist/*.dmg
           include-hidden-files: true
 
