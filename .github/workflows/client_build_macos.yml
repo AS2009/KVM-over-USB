@@ -51,7 +51,8 @@ jobs:
 
       - name: Post-process .app (icon + LSUIElement)
         run: |
-          APP_PATH="./client/build/USB KVM Client.app"
+          APP_PATH=$(find ./client/build -maxdepth 2 -name "*.app" -type d | head -1)
+          echo "Found app: ${APP_PATH}"
           CONTENTS="${APP_PATH}/Contents"
           RESOURCES="${CONTENTS}/Resources"
 
@@ -85,7 +86,7 @@ jobs:
 
       - name: Clear Quarantine & Ad-hoc Sign
         run: |
-          APP_PATH="./client/build/USB KVM Client.app"
+          APP_PATH=$(find ./client/build -maxdepth 2 -name "*.app" -type d | head -1)
           xattr -cr "${APP_PATH}" 2>/dev/null || true
           codesign --force --deep --sign - "${APP_PATH}"
           codesign --verify --verbose "${APP_PATH}"
@@ -93,7 +94,7 @@ jobs:
 
       - name: Package as DMG
         run: |
-          APP_PATH="./client/build/USB KVM Client.app"
+          APP_PATH=$(find ./client/build -maxdepth 2 -name "*.app" -type d | head -1)
           if [ ! -d "$APP_PATH" ]; then
             echo "App bundle not found at $APP_PATH"
             exit 1
