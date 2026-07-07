@@ -8,17 +8,7 @@ on:
 
 jobs:
   build:
-    strategy:
-      matrix:
-        include:
-          - runner: macos-14
-            arch: arm64
-            arch_label: arm64
-          - runner: macos-13
-            arch: x64
-            arch_label: x64
-
-    runs-on: ${{ matrix.runner }}
+    runs-on: macos-latest
 
     steps:
       - name: Check-out repository
@@ -28,7 +18,7 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.14'
-          architecture: '${{ matrix.arch }}'
+          architecture: 'arm64'
           cache: 'pip'
           cache-dependency-path: |
             **/requirements*.txt
@@ -88,7 +78,7 @@ jobs:
           fi
 
           VERSION="${{ github.ref_name }}"
-          DMG_NAME="USB_KVM_Client_${VERSION}_macOS_${{ matrix.arch_label }}.dmg"
+          DMG_NAME="USB_KVM_Client_${VERSION}_macOS_arm64.dmg"
           STAGING_DIR="./dmg_staging"
 
           mkdir -p dist "$STAGING_DIR"
@@ -110,7 +100,7 @@ jobs:
       - name: Upload DMG Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: macOS_build_${{ matrix.arch_label }}
+          name: macOS_build
           path: dist/*.dmg
           include-hidden-files: true
 
