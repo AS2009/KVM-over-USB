@@ -28,11 +28,11 @@ jobs:
           pip install -r ./client/data/requirements_for_macos.txt
         shell: bash
 
-      - name: Build .app with Nuitka (app mode)
+      - name: Build .app with Nuitka (standalone + bundle)
         working-directory: ./client
         run: |
           python -m nuitka \
-            --mode=app \
+            --macos-create-app-bundle \
             --macos-app-name="USB KVM Client" \
             --macos-app-version=1.0.0 \
             --macos-sign-identity=- \
@@ -47,6 +47,12 @@ jobs:
             --assume-yes-for-downloads \
             --quiet \
             usb_kvm_client.py
+        shell: bash
+
+      - name: Diagnose Nuitka build output
+        run: |
+          echo "=== Build directory contents ==="
+          find ./client/build -maxdepth 3 | sort | head -50
         shell: bash
 
       - name: Post-process .app (icon + LSUIElement)
