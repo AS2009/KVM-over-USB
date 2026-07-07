@@ -28,55 +28,63 @@ jobs:
           pip install -r ./client/data/requirements_for_macos.txt
         shell: bash
 
-      - name: Build with Nuitka
-        uses: Nuitka/Nuitka-Action@main
-        with:
-          nuitka-version: main
-          working-directory: ./client
-          script-name: usb_kvm_client.py
-          mode: app
-          python-flag: |
-            -u
-            -O
-          include-data-dir: |
-            ./data=data
-            ./icons=icons
-            ./translations=translations
-          enable-plugins: pyside6
-          include-qt-plugins: multimedia
-          macos-create-app-bundle: true
-          quiet: true
-
-      - name: Create DMG
+      - name: Build with Nuitka (standalone)
+        working-directory: ./client
         run: |
-          APP_PATH=$(find ./client/build -maxdepth 1 -name "*.app" | head -n 1)
-          if [ -z "$APP_PATH" ]; then
-            echo "Error: No .app bundle found in ./client/build/"
+          python -m nuitka \
+            --mode=standalone \
+            --python-flag=-u \
+            --python-flag=-O \
+            --enable-plugin=pyside6 \
+            --include-qt-plugins=multimedia \
+            --include-data-dir=./data=data \
+            --include-data-dir=./icons=icons \
+            --include-data-dir=./translations=translations \
+            --output-dir=build \
+            --assume-yes-for-downloads \
+            --quiet \
+            usb_kvm_client.py
+        shell: bash
+
+      - name: Create macOS .app Bundle
+        run: |
+          BUILD_DIR="./client/build/usb_kvm_client.dist"
+          if [ ! -d "$BUILD_DIR" ]; then
+            echo "Error: Nuitka output dir not found at $BUILD_DIR"
             ls -la ./client/build/
             exit 1
           fi
-          echo "Found app bundle: $APP_PATH"
+          python3 ./client/script/create_macos_app_bundle.py "$BUILD_DIR" "./client/build"
+        shell: bash
+      - name: Package as DMG
+        run: |
+          BUNDLE_NAME="USB KVM Client.app"
+          APP_PATH="./client/build/${BUNDLE_NAME}"
 
-          APP_NAME=$(basename "$APP_PATH" .app)
+          if [ ! -d "$APP_PATH" ]; then
+            echo "App bundle not found at $APP_PATH"
+            ls -la ./client/build/
+            exit 1
+          fi
+
           VERSION="${{ github.ref_name }}"
-          DMG_NAME="${APP_NAME}_${VERSION}_macOS.dmg"
-          STAGING="./dmg_staging"
+          DMG_NAME="USB_KVM_Client_${VERSION}_macOS.dmg"
+          STAGING_DIR="./dmg_staging"
 
-          mkdir -p "$STAGING"
-          cp -R "$APP_PATH" "$STAGING/"
-          ln -s /Applications "$STAGING/Applications"
+          mkdir -p dist "$STAGING_DIR"
+          cp -R "$APP_PATH" "$STAGING_DIR/"
+          ln -s /Applications "$STAGING_DIR/Applications"
 
-          echo "Creating DMG: $DMG_NAME"
+          echo "Creating DMG: ${DMG_NAME}"
           hdiutil create \
-            -volname "$APP_NAME" \
-            -srcfolder "$STAGING" \
+            -volname "USB KVM Client" \
+            -srcfolder "$STAGING_DIR" \
             -ov \
             -format UDZO \
             -imagekey zlib-level=9 \
-            "dist/$DMG_NAME"
+            "dist/${DMG_NAME}"
 
-          echo "DMG created successfully:"
-          ls -lh dist/
+          echo "DMG created: dist/${DMG_NAME} ($(du -sh "dist/${DMG_NAME}" | cut -f1))"
         shell: bash
 
       - name: Upload DMG Artifact
