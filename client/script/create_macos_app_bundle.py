@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-"""创建 macOS .app 包裹，将 Nuitka standalone 输出打包为可双击启动的 .app。"""
+"""
+创建 macOS .app 包裹（Nuitka standalone -> .app）
+"""
 
 import os
 import plistlib
@@ -43,7 +45,15 @@ def create_icns(splash_png: str, resources_dir: str) -> bool:
     for size in sizes:
         dst = os.path.join(iconset, f"icon_{size}x{size}.png")
         subprocess.run(
-            ["sips", "-z", str(size), str(size), splash_png, "--out", dst],
+            [
+                "sips",
+                "-z",
+                str(size),
+                str(size),
+                splash_png,
+                "--out",
+                dst,
+            ],
             capture_output=True,
         )
 
@@ -62,7 +72,10 @@ def create_icns(splash_png: str, resources_dir: str) -> bool:
 
 def main() -> None:
     if len(sys.argv) != 3:
-        print("用法: create_macos_app_bundle.py <nuitka_dist_dir> <output_app_dir>")
+        print(
+            "用法: create_macos_app_bundle.py"
+            " <nuitka_dist_dir> <output_app_dir>"
+        )
         sys.exit(1)
 
     dist_dir = os.path.abspath(sys.argv[1])
@@ -102,19 +115,23 @@ def main() -> None:
     # 生成图标
     splash_png = os.path.join(
         os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-        "icons", "splash.png"
+        "icons",
+        "splash.png",
     )
     if create_icns(splash_png, resources_dir):
         # 在 Info.plist 中添加图标引用
         plist_path = os.path.join(contents, "Info.plist")
         subprocess.run(
-            ["/usr/libexec/PlistBuddy",
-             "-c", "Add :CFBundleIconFile string app.icns",
-             plist_path],
+            [
+                "/usr/libexec/PlistBuddy",
+                "-c",
+                "Add :CFBundleIconFile string app.icns",
+                plist_path,
+            ],
             capture_output=True,
         )
 
-    print(f"✅ .app 包裹创建完成: {bundle_path}")
+    print(f".app 包裹创建完成: {bundle_path}")
 
 
 if __name__ == "__main__":
