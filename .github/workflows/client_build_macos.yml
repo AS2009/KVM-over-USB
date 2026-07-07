@@ -67,6 +67,15 @@ jobs:
           python3 ./client/script/create_macos_app_bundle.py "$BUILD_DIR" "./client/build"
         shell: bash
 
+
+      - name: Code Sign .app (ad-hoc)
+        run: |
+          APP_PATH="./client/build/USB KVM Client.app"
+          echo "Signing ${APP_PATH} with ad-hoc signature..."
+          codesign --force --deep --sign - "${APP_PATH}"
+          echo "Verifying signature:"
+          codesign --verify --verbose "${APP_PATH}"
+        shell: bash
       - name: Package as DMG
         run: |
           BUNDLE_NAME="USB KVM Client.app"
