@@ -28,11 +28,16 @@ jobs:
           pip install -r ./client/data/requirements_for_macos.txt
         shell: bash
 
-      - name: Build with Nuitka (standalone)
+      - name: Build .app with Nuitka (native bundle)
         working-directory: ./client
         run: |
           python -m nuitka \
             --mode=standalone \
+            --macos-create-app-bundle \
+            --macos-app-name="USB KVM Client" \
+            --macos-app-version=1.0.0 \
+            --macos-sign-identity=- \
+            --macos-sign-notarization=off \
             --python-flag=-u \
             --python-flag=-O \
             --enable-plugin=pyside6 \
@@ -46,36 +51,53 @@ jobs:
             usb_kvm_client.py
         shell: bash
 
-      - name: Create macOS .app Bundle
-        run: |
-          BUILD_DIR="./client/build/usb_kvm_client.dist"
-          if [ ! -d "$BUILD_DIR" ]; then
-            echo "Error: Nuitka output dir not found at $BUILD_DIR"
-            ls -la ./client/build/
-            exit 1
-          fi
-          python3 ./client/script/create_macos_app_bundle.py "$BUILD_DIR" "./client/build"
-        shell: bash
-
-
-      - name: Remove Quarantine & Code Sign .app
+      - name: Post-process .app (icon + LSUIElement)
         run: |
           APP_PATH="./client/build/USB KVM Client.app"
-          echo "Clearing quarantine xattr..."
+          CONTENTS="${APP_PATH}/Contents"
+          RESOURCES="${CONTENTS}/Resources"
+
+          # 添加 LSUIElement 避免 HIServices 注册问题
+          /usr/libexec/PlistBuddy \
+            -c "Add :LSUIElement bool true" \
+            "${CONTENTS}/Info.plist" 2>/dev/null || \
+          /usr/libexec/PlistBuddy \
+            -c "Set :LSUIElement true" \
+            "${CONTENTS}/Info.plist" 2>/dev/null || true
+
+          # 从 splash.png 生成 .icns 图标
+          if [ -f "./client/icons/splash.png" ]; then
+            ICONSET="/tmp/app.iconset"
+            mkdir -p "$ICONSET"
+            for s in 16 32 128 256; do
+              sips -z $s $s ./client/icons/splash.png \
+                --out "${ICONSET}/icon_${s}x${s}.png" 2>/dev/null
+            done
+            iconutil -c icns "$ICONSET" -o "${RESOURCES}/app.icns" 2>/dev/null && \
+              /usr/libexec/PlistBuddy \
+                -c "Add :CFBundleIconFile string app.icns" \
+                "${CONTENTS}/Info.plist" 2>/dev/null || true
+            rm -rf "$ICONSET"
+          fi
+
+          echo "App bundle ready:"
+          ls -la "${CONTENTS}/MacOS/usb_kvm_client" 2>/dev/null && \
+            echo "  Binary: OK" || echo "  Binary: MISSING!"
+        shell: bash
+
+      - name: Clear Quarantine & Ad-hoc Sign
+        run: |
+          APP_PATH="./client/build/USB KVM Client.app"
           xattr -cr "${APP_PATH}" 2>/dev/null || true
-          echo "Signing ${APP_PATH} with ad-hoc signature..."
           codesign --force --deep --sign - "${APP_PATH}"
-          echo "Verifying signature:"
           codesign --verify --verbose "${APP_PATH}"
         shell: bash
+
       - name: Package as DMG
         run: |
-          BUNDLE_NAME="USB KVM Client.app"
-          APP_PATH="./client/build/${BUNDLE_NAME}"
-
+          APP_PATH="./client/build/USB KVM Client.app"
           if [ ! -d "$APP_PATH" ]; then
             echo "App bundle not found at $APP_PATH"
-            ls -la ./client/build/
             exit 1
           fi
 
@@ -96,7 +118,7 @@ jobs:
             -imagekey zlib-level=9 \
             "dist/${DMG_NAME}"
 
-          echo "DMG created: dist/${DMG_NAME} ($(du -sh "dist/${DMG_NAME}" | cut -f1))"
+          echo "DMG: dist/${DMG_NAME} ($(du -sh "dist/${DMG_NAME}" | cut -f1))"
         shell: bash
 
       - name: Upload DMG Artifact
