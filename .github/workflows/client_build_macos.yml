@@ -58,9 +58,11 @@ jobs:
         shell: bash
 
 
-      - name: Code Sign .app (ad-hoc)
+      - name: Remove Quarantine & Code Sign .app
         run: |
           APP_PATH="./client/build/USB KVM Client.app"
+          echo "Clearing quarantine xattr..."
+          xattr -cr "${APP_PATH}" 2>/dev/null || true
           echo "Signing ${APP_PATH} with ad-hoc signature..."
           codesign --force --deep --sign - "${APP_PATH}"
           echo "Verifying signature:"

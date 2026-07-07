@@ -106,8 +106,17 @@ def main() -> None:
 
     # 确保二进制可执行
     binary = os.path.join(macos_dir, "usb_kvm_client")
+    bin_path = os.path.join(macos_dir, "usb_kvm_client.bin")
     if os.path.isfile(binary):
         os.chmod(binary, 0o755)
+    elif os.path.isfile(bin_path):
+        # Nuitka macOS standalone 产出 .bin 后缀，需改名
+        os.rename(bin_path, binary)
+        os.chmod(binary, 0o755)
+    else:
+        print("  警告: 找不到可执行文件")
+        for name in sorted(os.listdir(macos_dir)):
+            print(f"    MacOS/{name}")
 
     # 生成 Info.plist
     create_info_plist(contents)
