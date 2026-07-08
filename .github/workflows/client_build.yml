@@ -78,6 +78,7 @@ jobs:
           file-description: a open source usb kvm client
           # windows flag
           windows-console-mode: disable
+          include-msvc-runtime: true
           windows-icon-from-ico: ./icons/main.ico
           onefile-windows-splash-screen-image: ./icons/splash.png
           quiet: true
