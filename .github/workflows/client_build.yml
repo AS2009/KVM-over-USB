@@ -59,7 +59,6 @@ jobs:
         if: runner.os == 'Windows'
         uses: Nuitka/Nuitka-Action@main
         with:
-          nuitka-version: main
           working-directory: ./client
           script-name: usb_kvm_client.py
           mode: app
@@ -87,7 +86,6 @@ jobs:
         if: runner.os == 'Linux'
         uses: Nuitka/Nuitka-Action@main
         with:
-          nuitka-version: main
           working-directory: ./client
           script-name: usb_kvm_client.py
           mode: app
