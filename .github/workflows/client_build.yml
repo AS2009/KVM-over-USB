@@ -77,7 +77,6 @@ jobs:
           file-description: a open source usb kvm client
           # windows flag
           windows-console-mode: disable
-          include-msvc-runtime: true
           windows-icon-from-ico: ./icons/main.ico
           onefile-windows-splash-screen-image: ./icons/splash.png
           quiet: true
@@ -100,12 +99,28 @@ jobs:
           include-qt-plugins: multimedia
           quiet: true
 
+      - name: Copy VC++ Runtime DLLs (Win7)
+        if: matrix.label == 'windows_win7'
+        run: |
+          # 从 MSVC Redist 目录拷贝 VC++ 运行时 DLL 到构建输出
+          $redistDir = "$env:VCToolsRedistDird\Microsoft.VC143.CRT"
+          if (Test-Path "$redistDircruntime140.dll") {
+            Copy-Item "$redistDircruntime140.dll" ./client/build/ -Force
+            Copy-Item "$redistDir\msvcp140.dll" ./client/build/ -Force
+            Copy-Item "$redistDircruntime140_1.dll" ./client/build/ -Force -ErrorAction SilentlyContinue
+            echo "VC++ runtime DLLs copied to build output"
+          } else {
+            echo "WARNING: VC++ runtime DLLs not found at $redistDir"
+          }
+        shell: pwsh
+
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.label }}_build
           path: |
             ./client/build/*.exe
+            ./client/build/*.dll
             ./client/build/*.bin
           include-hidden-files: true
 
