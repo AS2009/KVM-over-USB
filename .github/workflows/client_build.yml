@@ -41,10 +41,7 @@ jobs:
           if [ "$RUNNER_OS" = "Linux" ]; then
               pip install -r ./client/data/requirements_for_posix.txt
           elif [ "$RUNNER_OS" = "Windows" ] && [ "${{ matrix.label }}" = "windows_win7" ]; then
-              pip install \
-                pyside6 pyside6-essentials pyside6-addons \
-                pyserial hidapi pych9329 loguru pyyaml nuitka \
-                pywin32 pywinhook
+              pip install -r ./client/data/requirements_for_win7.txt
           elif [ "$RUNNER_OS" = "Windows" ]; then
               pip install -r ./client/data/requirements.txt
           else
